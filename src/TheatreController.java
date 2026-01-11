@@ -10,6 +10,11 @@ public class TheatreController {
     Map<City, List<Theatre>> cityVsTheatre;
     List<Theatre> allTheatre;
 
+    public TheatreController() {
+        this.cityVsTheatre = new HashMap<>();
+        this.allTheatre = new ArrayList<>();
+    }
+
     public void addTheatre(Theatre theatre, City city) {
         allTheatre.add(theatre);
         List<Theatre> theatres = cityVsTheatre.getOrDefault(city, new ArrayList<>());

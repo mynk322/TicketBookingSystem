@@ -1,4 +1,6 @@
+import enums.BookingStatus;
 import enums.PaymentMode;
+import enums.PaymentStatus;
 import enums.SeatCategory;
 
 import java.util.ArrayList;
@@ -9,6 +11,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class BookingController {
+    
+    // Reference to PaymentController for payment processing
+    private PaymentController paymentController;
 
     private Map<String, Booking> allBookings;
     private Map<Integer, List<Booking>> showBookings;
@@ -23,6 +28,13 @@ public class BookingController {
     public BookingController() {
         this.allBookings = new HashMap<>();
         this.showBookings = new HashMap<>();
+    }
+    
+    /**
+     * Set PaymentController for payment processing
+     */
+    public void setPaymentController(PaymentController paymentController) {
+        this.paymentController = paymentController;
     }
 
     /**
@@ -127,12 +139,15 @@ public class BookingController {
             }
             booking.setBookedSeats(bookedSeats);
 
-            // Calculate total amount
-            double totalAmount = calculateTotalAmount(bookedSeats);
+            // Calculate total amount using PriceCalculator
+            double totalAmount = PriceCalculator.calculateTotal(bookedSeats);
             booking.setTotalAmount(totalAmount);
 
             // Generate booking ID
-            booking.calculateTotalAmount(); // This generates booking ID
+            booking.generateBookingId();
+            
+            // Set initial booking status
+            booking.setStatus(BookingStatus.CONFIRMED);
 
             // Store booking (need lock for this too)
             bookingLock.lock();
@@ -194,29 +209,6 @@ public class BookingController {
         return true;
     }
 
-    /**
-     * Calculate total amount based on seat categories
-     */
-    private double calculateTotalAmount(List<Seat> seats) {
-        double total = 0.0;
-        Map<SeatCategory, Double> pricing = getSeatPricing();
-
-        for (Seat seat : seats) {
-            SeatCategory category = seat.getSeatCategory();
-            double price = pricing.getOrDefault(category, 100.0);
-            total += price;
-        }
-        return total;
-    }
-
-    /**
-     * Get pricing for different seat categories
-     */
-    private Map<SeatCategory, Double> getSeatPricing() {
-        Map<SeatCategory, Double> pricing = new HashMap<>();
-        // Add your pricing logic here based on SeatCategory enum values
-        return pricing;
-    }
 
     /**
      * Confirm booking and process payment (thread-safe)
@@ -228,11 +220,30 @@ public class BookingController {
             if (booking == null) {
                 throw new RuntimeException("Booking not found");
             }
+            
+            if (booking.getStatus() != BookingStatus.CONFIRMED) {
+                throw new RuntimeException("Booking is not in a valid state for payment");
+            }
 
-            // Create and process payment
-            Payment payment = new Payment();
-            payment.processPayment(paymentMode, booking.getTotalAmount());
+            // Process payment using PaymentController if available
+            Payment payment;
+            if (paymentController != null) {
+                String customerId = booking.getCustomer() != null ? booking.getCustomer().getCustomerId() : null;
+                payment = paymentController.processPayment(bookingId, paymentMode, booking.getTotalAmount(), customerId);
+            } else {
+                // Fallback to direct payment processing
+                payment = new Payment();
+                payment.processPayment(paymentMode, booking.getTotalAmount());
+            }
+            
             booking.setPayment(payment);
+            
+            // Update booking status based on payment status
+            if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
+                booking.setStatus(BookingStatus.CONFIRMED);
+            } else {
+                booking.setStatus(BookingStatus.CONFIRMED); // Keep as confirmed, payment can be retried
+            }
 
             return booking;
         } finally {

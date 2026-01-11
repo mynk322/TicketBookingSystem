@@ -14,7 +14,16 @@ public class Show {
         this.movie = movie;
         this.screen = screen;
         this.showStartTime = showStartTime;
-        this.bookedSeatIds = bookedSeatIds;
+        this.bookedSeatIds = bookedSeatIds != null ? bookedSeatIds : new ArrayList<>();
+    }
+    
+    // Constructor without bookedSeatIds (defaults to empty list)
+    public Show(int showId, Movie movie, Screen screen, int showStartTime) {
+        this.showId = showId;
+        this.movie = movie;
+        this.screen = screen;
+        this.showStartTime = showStartTime;
+        this.bookedSeatIds = new ArrayList<>();
     }
 
     public int getShowId() {

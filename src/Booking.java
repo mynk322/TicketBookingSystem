@@ -1,3 +1,4 @@
+import enums.BookingStatus;
 import enums.PaymentMode;
 
 import java.util.ArrayList;
@@ -9,6 +10,8 @@ public class Booking {
     List<Seat> bookedSeats = new ArrayList<>();
     Payment payment;
     double totalAmount;
+    BookingStatus status;
+    Customer customer;
 
     public Customer getCustomer() {
         return customer;
@@ -18,14 +21,25 @@ public class Booking {
         this.customer = customer;
     }
 
-    Customer customer;
+    public BookingStatus getStatus() {
+        return status;
+    }
 
+    public void setStatus(BookingStatus status) {
+        this.status = status;
+    }
+
+    public void generateBookingId() {
+        if (bookingId == null) {
+            bookingId = "BMS" + (int) (Math.random() * (52222 - 10001 + 1) + 10001);
+        }
+    }
+    
     public double calculateTotalAmount() {
         generateBookingId();
-        return bookedSeats.size() * show.getScreen().getSeats().size() * 100;
-    }
-    private void generateBookingId() {
-        bookingId = "BMS" + (int) (Math.random() * (52222 - 10001 + 1) + 10001);
+        // Fixed: Calculate based on booked seats, not all seats
+        // This method should just generate ID, actual calculation done in BookingController
+        return totalAmount;
     }
 
     public String getBookingId() {

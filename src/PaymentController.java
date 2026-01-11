@@ -183,13 +183,20 @@ public class PaymentController {
     }
 
     /**
+     * Internal method to get customer payments without lock (assumes lock is already held)
+     */
+    private List<Payment> getCustomerPaymentsUnsafe(String customerId) {
+        List<Payment> payments = paymentsByCustomerId.get(customerId);
+        return payments != null ? new ArrayList<>(payments) : new ArrayList<>();
+    }
+
+    /**
      * Get all payments for a customer
      */
     public List<Payment> getCustomerPayments(String customerId) {
         paymentLock.lock();
         try {
-            List<Payment> payments = paymentsByCustomerId.get(customerId);
-            return payments != null ? new ArrayList<>(payments) : new ArrayList<>();
+            return getCustomerPaymentsUnsafe(customerId);
         } finally {
             paymentLock.unlock();
         }
@@ -201,7 +208,7 @@ public class PaymentController {
     public List<Payment> getSuccessfulCustomerPayments(String customerId) {
         paymentLock.lock();
         try {
-            List<Payment> allPayments = getCustomerPayments(customerId);
+            List<Payment> allPayments = getCustomerPaymentsUnsafe(customerId);
             return allPayments.stream()
                     .filter(p -> p.getPaymentStatus() == PaymentStatus.SUCCESS)
                     .collect(Collectors.toList());
@@ -216,7 +223,7 @@ public class PaymentController {
     public List<Payment> getFailedCustomerPayments(String customerId) {
         paymentLock.lock();
         try {
-            List<Payment> allPayments = getCustomerPayments(customerId);
+            List<Payment> allPayments = getCustomerPaymentsUnsafe(customerId);
             return allPayments.stream()
                     .filter(p -> p.getPaymentStatus() == PaymentStatus.FAILED)
                     .collect(Collectors.toList());
@@ -325,7 +332,7 @@ public class PaymentController {
     public Map<String, Object> getCustomerPaymentStats(String customerId) {
         paymentLock.lock();
         try {
-            List<Payment> payments = getCustomerPayments(customerId);
+            List<Payment> payments = getCustomerPaymentsUnsafe(customerId);
 
             Map<String, Object> stats = new HashMap<>();
             stats.put("totalPayments", payments.size());
